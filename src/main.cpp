@@ -6,6 +6,8 @@
 #include "MockSensor.hpp"
 #include "MessageQueue.hpp"
 #include "SensorData.hpp"
+#include "FreeRTOS.h" // for vTaskDelay and pdMS_TO_TICKS
+#include "task.h" // for vTaskDelay and pdMS_TO_TICKS
 
 // flag to control the running state of the application
 std::atomic<bool> keepRunning(true);
@@ -59,28 +61,29 @@ void processingTask() {
     std::cout << "Processing Task Stopped..." << std::endl;
 }
 
+// wrapper for FreeRTOS task since FreeRTOS is based on C
+void vSensorTaskWrapper(void* pvParameters) {
+    MockSensor* sensor = static_cast<MockSensor*>(pvParameters);
+
+    while(true) {
+        auto data = sensor->readData();
+        if (data) {
+            printf("Sensor Data: %f\n", *data);
+        } else {    
+            printf("Failed to read data from %s\n", sensor->getSensorName().c_str());
+        }
+
+        // simulate sensor read interval 
+        // explictly assigning the delay time 1000ms to a variable to avoid potential issues depending on the environment or FreeRTOS configuration
+        vTaskDelay(pdMS_TO_TICKS(1000)); 
+    }
+} 
+
 int main() {
-    // TODO: DI or refactoring to use an Interface-based Factory 
-    // e.g., std::unique_ptr<ISensor> tempSensor = SensorFactory::Create("Temperature");
-    auto tempSensor = std::make_unique<MockSensor>("Temperature");
-    auto humiSensor = std::make_unique<MockSensor>("Humidity");
+    auto tempSensor = std::make_unique<MockSensor>("Temp");
 
-    // thread starts. depending on the Interface
-    std::thread t1(sensorTask, tempSensor.get(), SensorType::Temperature, "C");
-    std::thread t2(sensorTask, humiSensor.get(), SensorType::Humidity, "%");
-    std::thread t3(sensorTask, tempSensor.get(), SensorType::Gas, "ppm"); // reusing temp sensor for gas data
-    std::thread t_proc(processingTask);
+    xTaskCreate(vSensorTaskWrapper, "TempSensorTask", 2048, tempSensor.get(), 1, NULL);
 
-    std::this_thread::sleep_for(std::chrono::seconds(5)); // run for 5 seconds
-
-    keepRunning = false; // signal threads to stop
-
-    sensorDataQueue.enqueue({SensorType::Gas, 0.0, ""}); // Dummy data to unblock processing thread if it's waiting
-
-    t1.join();
-    t2.join();
-    t3.join();
-    t_proc.join();
-    
+    vTaskStartScheduler();
     return 0;
 }

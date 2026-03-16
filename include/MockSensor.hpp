@@ -4,10 +4,10 @@
 
 class MockSensor : public ISensor {
 private:
-    std::string_view name;
+    std::string name;
 
 public:
-    explicit MockSensor(std::string_view sensorName) : name(sensorName) {}
+    explicit MockSensor(std::string sensorName) : name(sensorName) {}
 
     bool initialize() override {
         // Simulate initialization logic (always successful for this mock)
@@ -21,7 +21,7 @@ public:
         return distribution(generator);
     }
 
-    std::string_view getSensorName() const override {
+    std::string getSensorName() const override {
         return name;
     }
 };
