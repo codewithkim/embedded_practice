@@ -5,9 +5,10 @@
 class MockSensor : public ISensor {
 private:
     std::string name;
+    SensorType type;
 
 public:
-    explicit MockSensor(std::string sensorName) : name(sensorName) {}
+    MockSensor(std::string sensorName, SensorType sensorType) : name(sensorName), type(sensorType) {}
 
     bool initialize() override {
         // Simulate initialization logic (always successful for this mock)
@@ -23,5 +24,9 @@ public:
 
     std::string getSensorName() const override {
         return name;
+    }
+
+    SensorType getSensorType() const override {
+        return type;
     }
 };
