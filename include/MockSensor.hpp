@@ -6,9 +6,15 @@ class MockSensor : public ISensor {
 private:
     std::string name;
     SensorType type;
+    uint32_t intervalMs;
 
 public:
-    MockSensor(std::string sensorName, SensorType sensorType) : name(sensorName), type(sensorType) {}
+    MockSensor(
+        std::string sensorName,
+        SensorType sensorType, 
+        int sensorInterval) : name(sensorName), 
+        type(sensorType), 
+        intervalMs(sensorInterval) {}
 
     bool initialize() override {
         // Simulate initialization logic (always successful for this mock)
@@ -28,5 +34,9 @@ public:
 
     SensorType getSensorType() const override {
         return type;
+    }
+
+    uint32_t getIntervalMs() const override {
+        return intervalMs;
     }
 };
