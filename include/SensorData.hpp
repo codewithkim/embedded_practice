@@ -9,7 +9,7 @@ enum class SensorType {
 };
 
 enum class DataStatus {
-    Vaild,
+    Valid,
     Error,
     OutOfRange
 };
@@ -20,7 +20,7 @@ struct SensorData {
     char unit[8];
     DataStatus status;
 
-    SensorData(SensorType t, double v, const char* u, DataStatus s = DataStatus::Vaild) : type(t), value(v), status(s) {
+    SensorData(SensorType t, double v, const char* u, DataStatus s = DataStatus::Valid) : type(t), value(v), status(s) {
         std::strncpy(this->unit, u, sizeof(this->unit) - 1);
         this->unit[sizeof(this->unit) - 1] = '\0'; // Ensure null-termination
     }

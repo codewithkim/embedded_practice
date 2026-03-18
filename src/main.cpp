@@ -10,6 +10,7 @@
 #include "task.h" // for vTaskDelay and pdMS_TO_TICKS
 #include "queue.h"
 #include "AppConfig.hpp"
+#include "DataProcessor.cpp"
 
 
 // flag to control the running state of the application
@@ -23,10 +24,12 @@ MessageQueue<SensorData> sensorDataQueue;
 void vProcessingTaskWrapper(void* pvParameters) {
     printf("Processing Task Ready...\n");
     fflush(stdout);
+    
+    DataProcessor processor;
     SensorData sensorData;
+
     TickType_t lastTempTime = xTaskGetTickCount();
     TickType_t lastHumiTime = xTaskGetTickCount();
-
     const TickType_t WATCHDOG_TIMEOUT = pdMS_TO_TICKS(3000); // 3 seconds
 
     printf(">>>> Processor: Watchdog Monitoring Enabeld (Timeout 3s) <<<<\n");
@@ -38,36 +41,33 @@ void vProcessingTaskWrapper(void* pvParameters) {
             
             TickType_t now = xTaskGetTickCount();
 
+            // Feed the Watchdog based on the type of sensor data received
+            if (sensorData.type == SensorType::Temperature) {
+                lastTempTime = now; // Update last received time for temperature
+            } else if (sensorData.type == SensorType::Humidity) {
+                lastHumiTime = now; // Update last received time for humidity
+            }
+
             if (sensorData.getStatus() == DataStatus::Error) {
                 printf("[ALARM] Sensor Type %d is reporting ERROR! Check hardware.\n", (int)sensorData.type);
                 continue; // Skip processing invalid data
             }
 
-            switch (sensorData.type) {
-                case SensorType::Temperature:
-                    lastTempTime = now;
-                    std::cout << "Temperature: " << sensorData.value << " " << sensorData.unit << std::endl;
-                    if (sensorData.value > 30.0) {
-                        // std::cout << "Warning: High Temperature!" << std::endl;
-                    }
-                    break;
-                case SensorType::Humidity:
-                    lastHumiTime = now;
-                    std::cout << "Humidity: " << sensorData.value << " " << sensorData.unit << std::endl;
-                    if (sensorData.value < 20.0) {
-                        // std::cout << "Warning: Low Humidity!" << std::endl;
-                    }
-                    break;
-                default:
-                    std::cout << "Unknown Sensor Type!" << std::endl;
-                    break;
-            }
+            DataProcessor::Result result = processor.process(sensorData);
+            const char* statusStr = (result == DataProcessor::Result::Normal) ? "Normal" : 
+                                   (result == DataProcessor::Result::Warning) ? "Warning" : "Error";
+            
+            printf("[Processor] Type: %d, Value: %.2f, Status: %s\n", 
+                   (int)sensorData.type, sensorData.value, statusStr);
+            
         } else {
             printf("Failed to receive data from queue in processing task\n");
-            vTaskDelay(pdMS_TO_TICKS(10));
+            // vTaskDelay(pdMS_TO_TICKS(10));
         }
 
+        // Watchdog monitoring
         TickType_t currentTime = xTaskGetTickCount();
+        
         if ((currentTime - lastTempTime) > WATCHDOG_TIMEOUT) {
             printf("!!! [Watchdog] No temperature data received for 3 seconds! Check sensor status.\n");
             lastTempTime = currentTime; // Reset watchdog timer after alert
@@ -102,7 +102,7 @@ void vSensorTaskWrapper(void* pvParameters) {
             SensorData errorMsg{sensor->getSensorType(), 0.0, "ERR", DataStatus::Error};
             xQueueSend(targetQueue, &errorMsg, 0);
         } else if (data) {
-            SensorData sensorData{sensor->getSensorType(), *data, "unit", DataStatus::Vaild};
+            SensorData sensorData{sensor->getSensorType(), *data, "unit", DataStatus::Valid};
             
             if (xQueueSend(targetQueue, &sensorData, 0) != pdPASS) {
                 printf("[Warning] Queue is full %s\n", sensor->getSensorName().c_str());

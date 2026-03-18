@@ -64,6 +64,9 @@ cmake ..
 # Compile the project
 make
 
+# Run the tests
+./run_tests
+
 # Run the simulation
 ./app
 ```

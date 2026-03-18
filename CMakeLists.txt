@@ -31,3 +31,27 @@ add_executable(app ${USER_SOURCES} ${FREERTOS_SOURCES})
 
 # 5. Connect libraries (Linux / POSIX)
 target_link_libraries(app pthread rt)
+
+
+include(FetchContent)
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/refs/heads/main.zip
+)
+set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(googletest)
+
+# Create a test executable
+# 1. Define the test executable
+add_executable(run_tests 
+    tests/processor_test.cpp 
+    src/DataProcessor.cpp 
+)
+
+target_include_directories(run_tests PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include   # If your headers are in an 'include' folder
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests     # For test-specific headers
+)
+
+target_link_libraries(run_tests GTest::gtest_main)
